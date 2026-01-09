@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 export const exportToPDF = (data, title) => {
   const doc = new jsPDF();
@@ -12,13 +12,14 @@ export const exportToPDF = (data, title) => {
   const tableColumn = Object.keys(data[0] || {});
   const tableRows = data.map(item => Object.values(item));
   
-  doc.autoTable({
-    head: [tableColumn],
-    body: tableRows,
-    startY: 35,
-    styles: { fontSize: 10 },
-    headStyles: { fillColor: [41, 128, 185] },
-  });
+  autoTable(doc, {
+  head: [tableColumn],
+  body: tableRows,
+  startY: 35,
+  styles: { fontSize: 10 },
+  headStyles: { fillColor: [41, 128, 185] },
+});
+
   
   doc.save(`${title.replace(/\s+/g, '_')}_${Date.now()}.pdf`);
 };
