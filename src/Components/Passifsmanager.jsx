@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { addPassif, deletePassif, payPassif } from '../features/Passifsslice';
+import { addTransaction } from '../features/Actifsslice'; // 🔥 NOUVEAU
 import { formatCurrency, formatDate } from '../features/Helpers';
 import { Plus, Trash2, DollarSign, AlertCircle } from 'lucide-react';
 
@@ -12,6 +13,9 @@ const Passifsmanager = () => {
     tvaAPayer: 8000,
     items: []
   });
+
+  // 🔥 NOUVEAU: Récupérer soldes pour validation
+  const { caisse, banque } = useSelector(state => state.actifs || { caisse: 0, banque: 0 });
 
   const [formData, setFormData] = useState({
     type: 'fournisseurs',
@@ -48,12 +52,53 @@ const Passifsmanager = () => {
     }
   };
 
-  const handlePay = (id) => {
+  // 🔥 AMÉLIORATION: Paiement avec choix du compte
+  const handlePay = (item) => {
     const montant = prompt('Montant à payer :');
-    if (montant && parseFloat(montant) > 0) {
-      dispatch(payPassif({ id, montant: parseFloat(montant) }));
-      showToastMessage('Paiement enregistré', 'success');
+    if (!montant || parseFloat(montant) <= 0) return;
+
+    const montantPaiement = parseFloat(montant);
+    
+    // Vérifier si montant valide
+    if (montantPaiement > item.montant) {
+      showToastMessage('Le montant ne peut pas dépasser le montant dû', 'error');
+      return;
     }
+
+    // 🔥 NOUVEAU: Demander le compte de paiement
+    const compte = prompt('Payer avec quel compte?\n1. Caisse\n2. Banque\n\nTapez 1 ou 2:');
+    
+    let compteChoisi;
+    if (compte === '1') {
+      compteChoisi = 'caisse';
+      if (montantPaiement > caisse) {
+        showToastMessage('Solde insuffisant en caisse', 'error');
+        return;
+      }
+    } else if (compte === '2') {
+      compteChoisi = 'banque';
+      if (montantPaiement > banque) {
+        showToastMessage('Solde insuffisant en banque', 'error');
+        return;
+      }
+    } else {
+      showToastMessage('Choix invalide', 'error');
+      return;
+    }
+
+    // Payer le passif
+    dispatch(payPassif({ id: item.id, montant: montantPaiement }));
+    
+    // 🔥 NOUVEAU: Enregistrer la sortie d'argent
+    dispatch(addTransaction({
+      type: 'sortie',
+      montant: montantPaiement,
+      compte: compteChoisi,
+      description: `Paiement ${item.type === 'fournisseurs' ? 'fournisseur' : item.type === 'dettes' ? 'dette' : 'TVA'}: ${item.description}`,
+      date: new Date().toISOString().split('T')[0],
+    }));
+    
+    showToastMessage(`Paiement de ${formatCurrency(montantPaiement)} effectué depuis ${compteChoisi === 'caisse' ? 'Caisse' : 'Banque'}`, 'success');
   };
 
   const showToastMessage = (message, type) => {
@@ -103,6 +148,24 @@ const Passifsmanager = () => {
             💰 Total Passifs
           </div>
           <div className="kpi-value">{formatCurrency(totalPassifs)}</div>
+        </div>
+      </div>
+
+      {/* 🔥 NOUVEAU: Afficher soldes disponibles */}
+      <div style={{ 
+        background: 'var(--light)', 
+        padding: '15px', 
+        borderRadius: '8px', 
+        marginBottom: '20px',
+        display: 'flex',
+        justifyContent: 'space-around',
+        alignItems: 'center'
+      }}>
+        <div>
+          <strong>💰 Caisse disponible:</strong> {formatCurrency(caisse)}
+        </div>
+        <div>
+          <strong>🏦 Banque disponible:</strong> {formatCurrency(banque)}
         </div>
       </div>
 
@@ -206,7 +269,7 @@ const Passifsmanager = () => {
                     <div className="action-buttons">
                       <button 
                         className="btn-edit" 
-                        onClick={() => handlePay(item.id)}
+                        onClick={() => handlePay(item)}
                         style={{ background: 'var(--success)', display: 'flex', alignItems: 'center', gap: '5px' }}
                         title="Payer"
                       >

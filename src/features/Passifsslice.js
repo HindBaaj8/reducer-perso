@@ -31,6 +31,10 @@ const passifsSlice = createSlice({
         state.items = state.items.filter(i => i.id !== action.payload);
       }
     },
+    updatePassifAmount: (state, action) => {
+  const { type, montant } = action.payload;
+  state[type] += montant;
+    },
     payPassif: (state, action) => {
       const { id, montant } = action.payload;
       const item = state.items.find(i => i.id === id);
@@ -47,5 +51,5 @@ const passifsSlice = createSlice({
   },
 });
 
-export const { addPassif, deletePassif, payPassif } = passifsSlice.actions;
+export const { addPassif, deletePassif, payPassif,updatePassifAmount } = passifsSlice.actions;
 export default passifsSlice.reducer;

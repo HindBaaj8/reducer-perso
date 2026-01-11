@@ -11,6 +11,7 @@ const actifsSlice = createSlice({
   name: 'actifs',
   initialState,
   reducers: {
+    
     addTransaction: (state, action) => {
       const { type, montant, compte, description, date } = action.payload;
       
@@ -20,7 +21,7 @@ const actifsSlice = createSlice({
         montant: parseFloat(montant),
         compte,
         description,
-        date: date || new Date().toISOString(),
+        date: date || new Date().toISOString().split('T')[0],
       });
 
       // Mise à jour du solde

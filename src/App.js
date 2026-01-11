@@ -1,43 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { toggleTheme } from './features/Themeslice';
+import { logout } from './features/Authslice';
+import Login from './Components/Login';
 import Dashboard from './Components/Dashboard';
-import ChargesManager from './Components/Chargesmanager';
-import ProduitsManager from './Components/Produitsmanager';
-import ActifsManager from './Components/Actifsmanager';
+import Chargesmanager from './Components/Chargesmanager';
+import Produitsmanager from './Components/Produitsmanager';
+import Actifsmanager from './Components/Actifsmanager';
 import Passifsmanager from './Components/Passifsmanager';
-
-import { 
-  LayoutDashboard, 
-  TrendingDown, 
-  TrendingUp, 
-  Wallet, 
-  CreditCard,
-  Moon, 
-  Sun,
-  Menu,
-  X
-} from 'lucide-react';
+import Facturesmanager from './Components/Facturesmanager';
+import { LogOut, User } from 'lucide-react';
 import './App.css';
 
 function App() {
   const dispatch = useDispatch();
   const darkMode = useSelector(state => state.theme?.darkMode || false);
+  const isAuthenticated = useSelector(state => state.auth?.isAuthenticated || false);
+  const currentUser = useSelector(state => state.auth?.currentUser);
+  
   const [activeView, setActiveView] = useState('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
-  // Appliquer le thème
+
   useEffect(() => {
     document.body.setAttribute('data-theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
 
-  // Menu items
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, emoji: '📊' },
-    { id: 'actifs', label: 'Actifs', icon: Wallet, emoji: '💰' },
-    { id: 'passifs', label: 'Passifs', icon: CreditCard, emoji: '💳' },
-    { id: 'charges', label: 'Charges', icon: TrendingDown, emoji: '💸' },
-    { id: 'produits', label: 'Produits', icon: TrendingUp, emoji: '💵' },
+    { id: 'dashboard', label: 'Dashboard', emoji: '📊' },
+    { id: 'actifs', label: 'Actifs', emoji: '💰' },
+    { id: 'passifs', label: 'Passifs', emoji: '💳' },
+    { id: 'charges', label: 'Charges', emoji: '💸' },
+    { id: 'produits', label: 'Produits', emoji: '💵' },
+    { id: 'factures', label: 'Factures', emoji: '📄' },
   ];
 
   const handleMenuClick = (viewId) => {
@@ -46,27 +40,40 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Render la vue active
+  const handleLogout = () => {
+    if (window.confirm('Êtes-vous sûr de vouloir vous déconnecter?')) {
+      dispatch(logout());
+      setActiveView('dashboard');
+    }
+  };
+
   const renderView = () => {
     switch (activeView) {
       case 'dashboard':
         return <Dashboard />;
       case 'actifs':
-        return <ActifsManager />;
+        return <Actifsmanager />;
       case 'passifs':
         return <Passifsmanager />;
       case 'charges':
-        return <ChargesManager />;
+        return <Chargesmanager />;
       case 'produits':
-        return <ProduitsManager />;
+        return <Produitsmanager />;
+      case 'factures':
+        return <Facturesmanager />;
       default:
         return <Dashboard />;
     }
   };
 
+  // 🔥 NOUVEAU: Si pas authentifié, montrer page login
+  if (!isAuthenticated) {
+    return <Login />;
+  }
+
+  // 🔥 Si authentifié, montrer l'app normale
   return (
     <div className="app-container">
-      {/* Mobile Menu Toggle */}
       <button 
         className="mobile-menu-toggle"
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -85,28 +92,62 @@ function App() {
           boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
         }}
       >
-        {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        {mobileMenuOpen ? '✕' : '☰'}
       </button>
 
-      {/* Sidebar */}
       <aside className={`sidebar ${mobileMenuOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
           <h1>💼 ComptaApp</h1>
           <p>Gestion Comptable Pro</p>
         </div>
 
+        {/* 🔥 NOUVEAU: Info utilisateur */}
+        {currentUser && (
+          <div style={{
+            background: 'rgba(255,255,255,0.1)',
+            padding: '15px',
+            margin: '0 15px 20px',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px'
+          }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #3498db, #2980b9)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px'
+            }}>
+              <User size={20} color="white" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '2px' }}>
+                {currentUser.nom}
+              </div>
+              <div style={{ fontSize: '11px', opacity: 0.8 }}>
+                {currentUser.role === 'admin' ? '👑 Admin' : '👤 Utilisateur'}
+              </div>
+            </div>
+          </div>
+        )}
+
         <nav>
           <ul className="sidebar-menu">
             {menuItems.map(item => {
-              const Icon = item.icon;
               return (
                 <li key={item.id}>
                   <button
                     className={activeView === item.id ? 'active' : ''}
                     onClick={() => handleMenuClick(item.id)}
                   >
-                    <Icon size={20} />
-                    <span>{item.emoji} {item.label}</span>
+                    <span>
+                      <span role="img" aria-label={item.label}>{item.emoji}</span>
+                      {' '}{item.label}
+                    </span>
                   </button>
                 </li>
               );
@@ -116,18 +157,44 @@ function App() {
 
         <div className="theme-toggle">
           <button onClick={() => dispatch(toggleTheme())}>
-            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-            <span>{darkMode ? 'Mode Clair' : 'Mode Sombre'}</span>
+            {darkMode ? '☀️' : '🌙'}
+            <span>{darkMode ? ' Mode Clair' : ' Mode Sombre'}</span>
+          </button>
+        </div>
+
+        {/* 🔥 NOUVEAU: Bouton Déconnexion */}
+        <div style={{ padding: '15px' }}>
+          <button 
+            onClick={handleLogout}
+            style={{
+              width: '100%',
+              padding: '12px',
+              background: 'rgba(231, 76, 60, 0.9)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              fontSize: '14px',
+              fontWeight: '600',
+              transition: 'all 0.3s'
+            }}
+            onMouseOver={(e) => e.target.style.background = '#c0392b'}
+            onMouseOut={(e) => e.target.style.background = 'rgba(231, 76, 60, 0.9)'}
+          >
+            <LogOut size={18} />
+            Se déconnecter
           </button>
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="main-content">
         {renderView()}
       </main>
 
-      {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
         <div 
           className="mobile-overlay"
@@ -145,8 +212,7 @@ function App() {
         />
       )}
 
-      {/* Responsive CSS */}
-      <style jsx>{`
+      <style dangerouslySetInnerHTML={{__html: `
         @media (max-width: 768px) {
           .mobile-menu-toggle {
             display: block !important;
@@ -162,7 +228,7 @@ function App() {
             transform: translateX(0);
           }
         }
-      `}</style>
+      `}} />
     </div>
   );
 }
